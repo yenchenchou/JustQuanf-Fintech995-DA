@@ -1,21 +1,33 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
+Created on Thu Sep  6 09:25:13 2018
+
+@author: yc
+"""
+
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
 Created on Mon May 28 13:48:15 2018
 
 @author: yc
 """
-import pandas as pd
 import numpy as np
-from pandas import Series, DataFrame
+import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
-from statsmodels.stats.proportion import proportions_ztest
-from bs4 import BeautifulSoup
 import re
 import xlsxwriter
-###################################################
-############ read the registered data #############
+from pandas import Series, DataFrame
+from statsmodels.stats.proportion import proportions_ztest
+from bs4 import BeautifulSoup
+
+
+# =============================================================================
+#  IMPORT REGISTERED DATA
+# =============================================================================
+
 data = pd.ExcelFile('/Users/yc/Desktop/AppWorks_StartupHackers/芬特克歷史報名資料/180611_芬特克整理LIST.xlsx')
 print(data.sheet_names)
 excel_list = ['428高雄場', '411台北場', '41台北場',
@@ -41,8 +53,12 @@ register_df.info()
 register_df.isnull().sum()
 register_df.head()
 register_df.columns
-############ check if the value of each column does corresponded to what the column itself ############
+
 def val_in_col():
+    '''
+    check if the value of each column does corresponded to what the column itself
+    '''
+    
     col_list = register_df.columns
     col_list = ['Variation', '報名免費講座場次',
                 '從哪裡得知講座消息？', '是否到場', 
@@ -57,22 +73,26 @@ register_df['報名免費講座場次'].str.contains('5/5').sum()
 register_df = register_df[register_df['報名免費講座場次']!='高雄加開場｜ 5/5 （六）高雄商務會議中心三樓']
 register_df = register_df[register_df['報名免費講座場次']!='高雄加開場｜ 5/5 （六）英格迪酒店']
 register_df = register_df[register_df['報名免費講座場次']!='高雄加開場｜ 5/5 （六）英迪格酒店']
-############ 重複報名的人到場率是不是比較高？ ############
+
+
 def double_register():
+    """
+    Does people eith double registeration have higher attency?
+    single registeration: 36.20 %，double ergisteration: 13.63 %
+    """
+    
     duplcate_data = register_df[register_df.duplicated(subset='Email')]
-    """
-    報名到場率36.20 %，有重複報名的名單到場率僅為13.63 %
-    """
     print('報名總到場率: ' , '{:.2f}'.format(len(register_df[register_df['是否到場']=='是'])/len(register_df)*100),'%') #報名到場率36.20 %
     print('重複報名到場率: ' , '{:.2f}'.format(len(duplcate_data['是否到場']=='是')/len(register_df['是否到場']=='是')*100),'%') #重複報名到場率13.63 %
 double_register()
 
 register_df = register_df.drop_duplicates()#register_df.to_csv(path_or_buf='/Users/yc/Desktop/registered_df.csv')
 
-############ 哪個報名來源有較高到場率？ ＋處理講座消息來源資料 ############
 
 def unique_valuein_register():   
-    """觀察誰要當報名資料跟上課學員資料的primary key"""
+    """
+    Deciding the primary key
+    """
     
     a = ['姓名','Email','手機號碼']
     for i in a:
@@ -89,7 +109,9 @@ register_df['從哪裡得知講座消息？'] = register_df['從哪裡得知講�
 register_df['從哪裡得知講座消息？'] = register_df['從哪裡得知講座消息？'].replace('Facebook  社團','Facebook 社團')
 
 def each_pct():    
-    """算出各個源到場率 vs 總報到場率"""
+    """
+    Calculate the rate of attendancy and rate of registeration respeclty
+    """
     
     source = register_df['從哪裡得知講座消息？'].unique()
     numerator = ["a%d" %i for i in np.arange(len(source))]   
@@ -106,13 +128,10 @@ def each_pct():
 each_pct()
 
 
-############ 不留lineID的人到場率會比較差？ ############
 def People_no_line():
     
     """ 
-    不留lINE的報名狀況：
-    先計算沒有line總數，
-    後計算是因為accupass或是名單型廣告造成沒有line
+    Does leaving more contact info represent higher rate of registeration?
     """
     
     noline = register_df['Line ID '].isnull().sum()
@@ -124,8 +143,9 @@ def People_no_line():
 print("不用/不留Line的比例:", People_no_line() , '%')
 
 def P_ztest():
-    
-    """ 計算有無提供是否影響報名狀況 """
+    '''
+    Calculate the rate of registeration? through ztest
+    '''
     
     a=register_df[register_df['Line ID '].isnull()]
     line1 = a['是否到場'].value_counts()/len(a['是否到場'])
@@ -144,15 +164,12 @@ register_df.info()
 #register_df = register_df.drop(['Line ID ', 'ip'], axis=1)
 register_df.isnull().sum()
 
-"""
-清理資料順序：
-時間 & 報名免費講座場次 向前補上(ffill)
-報名免費講座場次去掉‘名單型’、‘活動通’等不正確字詞＋報名免費講座場次標準化
-職稱標準化
-Variation ＆ 標準化職稱 ＆ 薪資水準區間（月薪）用fancy impute KNN解決
 
-"""
 def fill_accuapass_listname_Date():
+    '''
+    fill missing value
+    '''
+    
     register_df[register_df['報名免費講座場次']=='名單型'] = register_df[register_df['報名免費講座場次']=='名單型'].replace('名單型', np.NaN)
     register_df[register_df['報名免費講座場次']=='活動通'] = register_df[register_df['報名免費講座場次']=='活動通'].replace('活動通', np.NaN)
     register_df[['Date','報名免費講座場次']] = register_df[['Date','報名免費講座場次']].fillna(method='ffill')
@@ -162,6 +179,10 @@ fill_accuapass_listname_Date()
 
 
 def split_col_seminar():
+    '''
+    split a single feature into several columns 
+    because splitting them can generate more information  
+    '''
     
     global register_df
     split1 = register_df['報名免費講座場次'].str.split('｜', expand=True)
@@ -195,7 +216,10 @@ salary()
 #register_df2 = pd.read_csv('/Users/yc/Desktop/芬特克歷史報名資料/register_df 2.csv')
 
 def attendence_situation():
-    """ 報名率與報退率趨勢 """
+    '''
+    rate of registeration and drop off
+    '''
+    
     a = register_df.columns
     attendence_situation_list = ['Variation', '薪資水準區間（月薪）',
                                  '從哪裡得知講座消息？','日期',
@@ -222,19 +246,20 @@ course_df = course_df.rename(columns={'聯絡電話':'手機號碼'})
 course_df = course_df.drop_duplicates(subset=['手機號碼'],keep='first')
 
 def unsucribe_course_ratio():      
-    """ 課程總報退率 """    
+    '''
+    課程總報退率
+    '''    
     
     return '課程總報退率： ' + '{:.2f}'.format(len(course_df[course_df['是否報退']=="是"])/course_df['是否報退'].notnull().sum()*100) + '%'
     
 unsucribe_course_ratio()
 
-
-###################################################################
-############ COMBINE DATA register_df & course_df #################
+# =============================================================================
+# COMBINE DATA register_df & course_df
+# =============================================================================
 result = pd.merge(register_df,course_df, on=['手機號碼'], how='outer')
 result['是否報退'].notnull().sum()
 result.isnull().sum()
-#result.to_csv(path_or_buf='/Users/yc/Desktop/180613-result-v1r10.csv')
 
 df = pd.read_csv('/Users/yc/Desktop/AppWorks_StartupHackers/芬特克歷史報名資料/180613-result-v1r10.csv')
 df.info()
@@ -283,25 +308,27 @@ df[df['確定會買課程']=='有買'].count()
 
 df.info()
 df.isnull().sum()
-################################################################
-############ READ THE FINAL REVISED DATA & DATA EDA ############
 
-"""
-任務：
-報名率與報退率，與其趨勢 done
-會買的買哪一種課，與其趨勢done
-用機器學習看誰會買
-用機器學習看誰買哪一種課
-"""
+# =============================================================================
+# READ THE FINAL REVISED DATA & DATA EDA
+# =============================================================================
+
 def buy_course_ratio():   
-    """ 課程總購買率 """    
+    '''
+    course buying rate
+    '''  
+    
     a = '課程總購買率： ' + '{:.2f}'.format(len(df[df['確定會買課程']=='有買'])/len(df[df['是否到場']=='是'])*100) + '%'
     return a
 buy_course_ratio()
 
 
 def buy_course_situation():
-    """ 報名率與報退率趨勢 """
+    '''
+    giving general ideas for the course registeration 
+    and people who bought the course 
+    '''
+    
     df_register_and_buy = df[df['是否到場']=='否']
     course_situation_list = ['Variation','薪資水準區間（月薪）', '從哪裡得知講座消息？',
                              '場次', '日期', '星期', '場地']
@@ -316,7 +343,9 @@ buy_course_situation()
 #register_df.to_csv(path_or_buf='/Users/yc/Desktop/芬特克註冊資料(無職業)-v1r00.csv')
 
 def course_type_situation():
-    """ 報名率與報退率趨勢 """
+    '''
+    trend for each course_type
+    '''
 
     df_purchase_type = df[df['確定會買課程']=='有買']
     course_situation_list = ['Variation', '薪資水準區間（月薪）', '從哪裡得知講座消息？',
@@ -330,8 +359,9 @@ def course_type_situation():
                                              margins=True), '\n\n')
 course_type_situation()
    
-
-############ COMBINE DATA ML for BUYING COURSE  ############
+# =============================================================================
+# USE MACHINE LEARNING TO PREDICT POTENTIAL CUSTOMERS
+# =============================================================================
 '''Import usual classification method'''
 df.columns
 df_buy_course = df[['Variation', '薪資水準區間（月薪）', 
@@ -493,7 +523,11 @@ random_forest = rdn_forest.score(X_test, Y_test)
 gradient_boosting = bgc.score(X_test,Y_test)
 naive_bayes = nb.score(X_test,Y_test)
     
-def accuracy_plot():    
+def accuracy_plot()
+    '''
+    plot the accuracy of each machine learning merhod
+    '''    
+    
     accuracy_score = pd.Series([knn, logistic_reg, linear_svm,
                                kernel_svm, decision_tree, random_forest,
                                gradient_boosting ,naive_bayes])
@@ -509,7 +543,11 @@ def accuracy_plot():
 accuracy_plot()
 
 
-def accuracy_table():    
+def accuracy_table():
+    '''
+    create accuracy table for each machine learning
+    '''
+    
     accuracy_score = pd.Series([knn, logistic_reg, linear_svm,
                                kernel_svm, decision_tree, random_forest,
                                gradient_boosting ,naive_bayes])
