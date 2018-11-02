@@ -2,6 +2,18 @@
 ## Goal
 The goal is to utilize data analytical technics to expand the students' amount from train boot camp service. Also, I also extract data from Google Analytics to see whether there are any possible business model could be found according to the footprint of the website.
 
+## Prerequisites
+```Python
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+import re
+import xlsxwriter
+from pandas import Series, DataFrame
+from statsmodels.stats.proportion import proportions_ztest
+```
+
 ## Process
 ### Define metrics
 Define the metric: So, for the training boot camp, I defined whether people are going buy the boot camp service. As for the finding new business model, I define the percentage of people who view the product page and each browsing duration of the product page as metrics.   
